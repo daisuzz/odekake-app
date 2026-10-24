@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>おでかけ帳</title>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1214" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="おでかけ帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Chivo+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: same language as Daily Brew. White page, quiet greys, one clear blue for what to tap; rows separated by hairlines. */
+:root {
+  --bg: #ffffff;
+  --paper: #ffffff;
+  --sub: #f7f8f9;
+  --ink: #1c1f22;
+  --muted: #7d858c;
+  --line: #e4e7ea;
+  --accent: #0a8fd0;
+  --accent-ink: #ffffff;
+  --accent-soft: #e5f4fb;
+  --link: #0a8fd0;
+  --red: #d0453a;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "Chivo Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1214; --paper: #0f1214; --sub: #171b1e; --ink: #eef1f3; --muted: #8e979e; --line: #2a3035;
+    --accent: #4bb8ea; --accent-ink: #0f1214; --accent-soft: #13303f; --link: #4bb8ea; --red: #ef7a70; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1214; --paper: #0f1214; --sub: #171b1e; --ink: #eef1f3; --muted: #8e979e; --line: #2a3035;
+  --accent: #4bb8ea; --accent-ink: #0f1214; --accent-soft: #13303f; --link: #4bb8ea; --red: #ef7a70; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { margin: 0; font-family: var(--font-body); font-size: 15px; line-height: 1.6; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.wrap { max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); }
+header.top .wrap { padding-block: 12px 12px; display: grid; gap: 12px; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.brand h1 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: .12em; }
+
+.tabs { display: flex; gap: 18px; }
+.tabs button { border: 0; background: none; padding: 4px 0; font-size: 14px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs .n { margin-left: 3px; font-family: var(--font-num); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tabs .dot { margin-left: 3px; display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-num); font-size: 10px; line-height: 16px; text-align: center; vertical-align: 1px; }
+
+.filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 5px 10px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.search { width: 100%; border: 1px solid var(--line); background: var(--sub); border-radius: 4px; padding: 8px 11px; font-size: 15px; }
+
+main .wrap { padding-block: 0 110px; }
+
+.section-label { margin: 22px 0 0; padding: 0 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); border-bottom: 1px solid var(--line); }
+
+.card, .news { padding: 14px 2px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; min-width: 0; }
+.card.past, .news.read { color: var(--muted); }
+.card .head, .news .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.kind, .cat { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.kind.event, .cat.event, .cat.open { color: var(--accent); }
+.cat.close { color: var(--red); }
+.card h2, .news h2 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+.card .head h2 { flex-basis: 100%; color: var(--ink); }
+.card.past .head h2 { color: var(--muted); }
+.news.unread h2::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 7px; vertical-align: 2px; }
+.meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); }
+.meta .when { font-family: var(--font-num); color: var(--ink); font-variant-numeric: tabular-nums; }
+.meta .soon { color: var(--accent); font-weight: 700; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; color: var(--muted); }
+.memo, .news p { margin: 0; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.kid { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; margin-top: 2px; }
+.btn { border: 0; background: none; padding: 4px; font-size: 12px; text-decoration: none; color: var(--accent); display: inline-flex; align-items: center; }
+.btn.primary { font-weight: 700; }
+.btn.danger { color: var(--red); font-weight: 700; }
+.btn[aria-disabled="true"] { color: var(--muted); }
+.collected { font-family: var(--font-num); font-size: 12px; color: var(--muted); margin: 14px 2px 0; }
+.empty { margin-top: 16px; text-align: center; color: var(--muted); padding: 28px 12px; border: 1px dashed var(--line); border-radius: 6px; display: grid; gap: 6px; justify-items: center; }
+.empty h2 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 700; }
+.empty p { margin: 0; font-size: 13px; max-width: 32ch; }
+.notice { margin-top: 12px; font-size: 13px; color: var(--muted); background: var(--sub); border-radius: 6px; padding: 10px 12px; }
+
+.fab { position: fixed; z-index: 6; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 4px; padding: 12px 20px; font-size: 15px; font-weight: 700; letter-spacing: .06em; box-shadow: 0 2px 8px rgba(10,143,208,.25); }
+
+.sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgba(15,18,20,.4); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--bg); width: 100%; max-width: 520px; max-height: 92%; overflow-y: auto; border-radius: 8px 8px 0 0; padding-block: 18px calc(env(safe-area-inset-bottom, 0px) + 20px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+.sheet h2 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: .1em; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > label, .field > .lbl { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.field input[type=text], .field input[type=url], .field input[type=date], .field textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 9px 11px; font-size: 16px; }
+.field input[type=date] { font-family: var(--font-num); }
+.field textarea { min-height: 64px; resize: vertical; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 7px 12px; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+#f-kind, #f-status { flex-wrap: nowrap; gap: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+#f-kind button, #f-status button { flex: 1; border: 0; border-radius: 0; padding: 9px 2px; }
+#f-kind button + button, #f-status button + button { border-left: 1px solid var(--line); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row2 > * { min-width: 0; }
+.addtag { display: flex; gap: 8px; align-items: center; }
+.addtag input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 6px 10px; font-size: 14px; }
+.sheet-actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.sheet-actions .right { display: flex; gap: 10px; margin-left: auto; }
+.sheet-actions .btn { padding: 11px 18px; font-size: 15px; font-weight: 700; letter-spacing: .06em; border-radius: 4px; border: 1px solid var(--line); color: var(--ink); }
+.sheet-actions .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.sheet-actions .btn.danger { border: 0; color: var(--red); padding-left: 0; }
+.confirm { background: var(--sub); border-radius: 6px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.toast { position: fixed; z-index: 30; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 4px; font-size: 13px; white-space: nowrap; }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+.settings-link { margin: 24px 0 0; text-align: center; }
+.backup { margin-top: 28px; padding: 16px; background: var(--sub); border-radius: 6px; display: grid; gap: 10px; }
+.backup p { margin: 0; font-size: 12px; color: var(--muted); }
+.backup .row { display: flex; gap: 10px; }
+.backup button { flex: 1; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 10px; font-size: 14px; font-weight: 700; letter-spacing: .06em; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>おでかけ帳</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-news" role="tab" aria-selected="false" data-view="news">新着<span class="dot" id="n-news" hidden></span></button>
+      <button id="tab-want" role="tab" aria-selected="true" data-view="want">行きたい<span class="n" id="n-want"></span></button>
+      <button id="tab-went" role="tab" aria-selected="false" data-view="went">行った<span class="n" id="n-went"></span></button>
+    </div>
+    </div>
+    <div class="filters" id="filters" aria-label="しぼりこみ"></div>
+    <input class="search" id="q" type="search" placeholder="名前・エリア・メモでさがす" autocomplete="off">
+  </div>
+</header>
+
+<main>
+  <div class="wrap" id="list">
+    <div class="empty"><h2>読み込み中…</h2></div>
+  </div>
+</main>
+
+<button class="fab" id="fab" type="button">＋ 追加</button>
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+
+<script>
+(() => {
+  const KINDS = { shop: "お店", event: "イベント", spot: "公園・施設" };
+  const DEFAULT_TAGS = ["おすすめ", "子連れOK", "ベビーカーOK", "キッズメニュー", "座敷・ソファ", "授乳室・おむつ台", "駐車場", "雨の日OK", "テイクアウト", "予約可", "無料"];
+  const FILTERS = [
+    { id: "all", label: "すべて" },
+    { id: "t:おすすめ", label: "おすすめ" },
+    { id: "k:shop", label: "お店" },
+    { id: "k:event", label: "イベント" },
+    { id: "k:spot", label: "公園・施設" },
+    { id: "t:子連れOK", label: "子連れOK" },
+    { id: "t:雨の日OK", label: "雨の日OK" },
+    { id: "t:ベビーカーOK", label: "ベビーカーOK" },
+    { id: "soon", label: "今週末までの予定" },
+  ];
+
+  const NEWS_CATS = { event: "イベント", open: "開店", close: "閉店", community: "地域のお知らせ" };
+  const NEWS_FILTERS = [
+    { id: "all", label: "すべて" },
+    { id: "unread", label: "未読" },
+    { id: "kids", label: "子ども向け" },
+    { id: "c:event", label: "イベント" },
+    { id: "c:open", label: "開店" },
+    { id: "c:close", label: "閉店" },
+    { id: "c:community", label: "地域のお知らせ" },
+    { id: "hidden", label: "非表示にしたもの" },
+  ];
+  const state = { news: [], newsReady: false, items: [], view: "want", filter: "all", q: "", ready: false };
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  try { const v = localStorage.getItem("odekake.view"); if (v === "want" || v === "went" || v === "news") state.view = v; } catch (e) {}
+
+  // ---- dates ----
+  const todayStr = () => { const d = new Date(); return ymd(d); };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const WD = "日月火水木金土";
+  const fmtDate = (s) => { const d = parse(s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; };
+  const daysUntil = (s) => Math.round((parse(s) - parse(todayStr())) / 86400000);
+  const endOfWeekend = () => { const d = parse(todayStr()); const add = (7 - d.getDay()) % 7; d.setDate(d.getDate() + add); return ymd(d); };
+  const eventEnd = (it) => it.eventEnd || it.eventDate || "";
+  const isPast = (it) => it.kind === "event" && eventEnd(it) && eventEnd(it) < todayStr();
+
+  // ---- store: this browser's localStorage ----
+  // places: odekake.items (array). News is a JSON file in a (usually private) GitHub repo set in odekake.source;
+  // the last copy is kept in odekake.newsCache for offline use. Per-device read/hidden/saved lives in odekake.newsState.
+  const ITEMS_KEY = "odekake.items", NEWS_STATE_KEY = "odekake.newsState", SOURCE_KEY = "odekake.source", NEWS_CACHE_KEY = "odekake.newsCache";
+  const readJson = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v ?? fallback; } catch (e) { return fallback; } };
+  const writeJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  const store = {
+    async save(id, data) { const a = readJson(ITEMS_KEY, []); const i = a.findIndex((x) => x.id === id); if (i >= 0) a[i] = { ...data, id }; else a.push({ ...data, id }); if (!writeJson(ITEMS_KEY, a)) throw new Error("quota"); state.items = a; render(); },
+    async remove(id) { const a = readJson(ITEMS_KEY, []).filter((x) => x.id !== id); writeJson(ITEMS_KEY, a); state.items = a; render(); },
+  };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  let newsRaw = [], newsUpdatedAt = "";
+  function mergeNews() {
+    const ns = readJson(NEWS_STATE_KEY, {});
+    state.news = newsRaw.map((n) => ({ read: false, hidden: false, saved: false, ...n, ...(ns[n.id] || {}) }));
+  }
+  const getSource = () => { const v = readJson(SOURCE_KEY, null); return v && v.repo ? v : null; };
+  function applyNews(j) { newsRaw = Array.isArray(j && j.items) ? j.items : []; newsUpdatedAt = (j && j.updatedAt) || ""; }
+  async function fetchNews(src) {
+    const path = (src.path || "news.json").replace(/^\/+/, "");
+    const url = `https://api.github.com/repos/${src.repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}`;
+    const headers = { Accept: "application/vnd.github.raw+json" };
+    if (src.token) headers.Authorization = `Bearer ${src.token}`;
+    const res = await fetch(url, { headers, cache: "no-store" });
+    if (!res.ok) { const err = new Error(String(res.status)); err.status = res.status; throw err; }
+    return res.json();
+  }
+  async function loadNews() {
+    const src = getSource();
+    state.needSetup = !src;
+    if (!src) { state.newsReady = true; render(); return; }
+    try {
+      const j = await fetchNews(src);
+      applyNews(j); writeJson(NEWS_CACHE_KEY, j);
+      state.newsError = "";
+    } catch (e) {
+      state.newsError = e.status === 401 || e.status === 403 || e.status === 404 ? "auth" : "net";
+    }
+    mergeNews(); state.newsReady = true; render();
+  }
+  applyNews(readJson(NEWS_CACHE_KEY, null)); mergeNews();
+
+  state.items = readJson(ITEMS_KEY, []); state.ready = true;
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+  loadNews();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadNews(); });
+
+  // ---- render ----
+  function matches(it) {
+    const f = state.filter;
+    if (f.startsWith("k:") && it.kind !== f.slice(2)) return false;
+    if (f.startsWith("t:") && !(it.tags || []).includes(f.slice(2))) return false;
+    if (f === "soon") { if (it.kind !== "event" || !it.eventDate) return false; if (eventEnd(it) < todayStr() || it.eventDate > endOfWeekend()) return false; }
+    if (state.q) {
+      const hay = [it.name, it.area, it.memo, ...(it.tags || [])].join(" ").toLowerCase();
+      if (!hay.includes(state.q.toLowerCase())) return false;
+    }
+    return true;
+  }
+  function sortWant(a, b) {
+    const ae = a.kind === "event" && a.eventDate && !isPast(a), be = b.kind === "event" && b.eventDate && !isPast(b);
+    if (ae !== be) return ae ? -1 : 1;
+    if (ae && be) return a.eventDate.localeCompare(b.eventDate);
+    if (isPast(a) !== isPast(b)) return isPast(a) ? 1 : -1;
+    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  }
+  const sortWent = (a, b) => (b.visitedAt || b.updatedAt || "").localeCompare(a.visitedAt || a.updatedAt || "");
+
+  function renderFilters() {
+    if (state.view === "news") {
+      $("#filters").innerHTML = NEWS_FILTERS.map((f) => `<button type="button" class="chip" data-f="${esc(f.id)}" aria-pressed="${state.filter === f.id}">${esc(f.label)}</button>`).join("");
+      return;
+    }
+    $("#filters").innerHTML = FILTERS.filter((f) => !(f.id === "soon" && state.view === "went"))
+      .map((f) => `<button type="button" class="chip" data-f="${esc(f.id)}" aria-pressed="${state.filter === f.id}">${esc(f.label)}</button>`).join("");
+  }
+
+  function cardHtml(it) {
+    const tags = (it.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("");
+    const meta = [];
+    if (it.kind === "event" && it.eventDate) {
+      const end = it.eventEnd && it.eventEnd !== it.eventDate ? `〜${fmtDate(it.eventEnd)}` : "";
+      meta.push(`<span class="when">${fmtDate(it.eventDate)}${end}</span>`);
+      if (state.view === "want" && !isPast(it)) {
+        const n = daysUntil(it.eventDate);
+        if (n <= 0) meta.push(`<span class="soon">開催中</span>`);
+        else if (n <= 7) meta.push(`<span class="soon">あと${n}日</span>`);
+      }
+      if (isPast(it) && state.view === "want") meta.push(`<span>終了</span>`);
+    }
+    if (it.area) meta.push(`<span>${esc(it.area)}</span>`);
+    const mapQ = encodeURIComponent([it.name, it.area].filter(Boolean).join(" "));
+    const went = it.status === "went";
+    return `<article class="card${isPast(it) && !went ? " past" : ""}" data-id="${esc(it.id)}">
+      <div class="head"><span class="kind ${esc(it.kind)}">${esc(KINDS[it.kind] || "")}</span><h2>${esc(it.name)}</h2></div>
+      ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
+      ${tags ? `<div class="tags">${tags}</div>` : ""}
+      ${it.memo ? `<p class="memo">${esc(it.memo)}</p>` : ""}
+      <div class="actions">
+        ${went ? "" : `<button type="button" class="btn primary" data-act="went">行った！</button>`}
+        <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${mapQ}" target="_blank" rel="noopener">地図</a>
+        ${it.url ? `<a class="btn" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener">リンク</a>` : ""}
+        <button type="button" class="btn" data-act="edit">編集</button>
+      </div>
+    </article>`;
+  }
+  const safeUrl = (u) => /^https?:\/\//i.test(u) ? u : "https://" + u;
+
+  const fmtYmd = (s) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? fmtDate(s.slice(0, 10)) : "");
+  function newsMatches(n) {
+    const f = state.filter;
+    if (f === "unread" && n.read) return false;
+    if (f === "kids" && !n.kidFriendly) return false;
+    if (f.startsWith("c:") && n.category !== f.slice(2)) return false;
+    if (state.q) {
+      const hay = [n.title, n.summary, n.area, n.source].join(" ").toLowerCase();
+      if (!hay.includes(state.q.toLowerCase())) return false;
+    }
+    return true;
+  }
+  const newsSort = (a, b) => (b.collectedAt || "").slice(0, 10).localeCompare((a.collectedAt || "").slice(0, 10)) || (b.publishedAt || "").localeCompare(a.publishedAt || "");
+  function newsHtml(n) {
+    const when = [];
+    if (n.eventDate) when.push(`<span class="when">${fmtYmd(n.eventDate)}${n.eventEnd && n.eventEnd !== n.eventDate ? `〜${fmtYmd(n.eventEnd)}` : ""}</span>`);
+    if (n.area) when.push(`<span>${esc(n.area)}</span>`);
+    const canSave = n.category === "event" || n.category === "open";
+    return `<article class="news ${n.read ? "read" : "unread"}" data-nid="${esc(n.id)}">
+      <div class="head"><span class="cat ${esc(n.category)}">${esc(NEWS_CATS[n.category] || "お知らせ")}</span>${n.kidFriendly ? `<span class="kid">子ども向け</span>` : ""}<span>${esc(n.source || "")}${n.publishedAt ? ` · ${fmtYmd(n.publishedAt)}` : ""}</span></div>
+      <h2>${esc(n.title)}</h2>
+      ${when.length ? `<div class="meta">${when.join("")}</div>` : ""}
+      ${n.summary ? `<p>${esc(n.summary)}</p>` : ""}
+      <div class="actions">
+        ${n.url ? `<a class="btn" href="${esc(safeUrl(n.url))}" target="_blank" rel="noopener" data-nact="open">くわしく</a>` : ""}
+        ${canSave ? (n.saved ? `<span class="btn" aria-disabled="true">リストに追加済み</span>` : `<button type="button" class="btn primary" data-nact="save">行きたいに追加</button>`) : ""}
+        ${n.read ? "" : `<button type="button" class="btn" data-nact="read">既読</button>`}
+        ${n.hidden ? `<button type="button" class="btn primary" data-nact="unhide">戻す</button>` : `<button type="button" class="btn" data-nact="hide">非表示</button>`}
+      </div>
+    </article>`;
+  }
+  function renderNews() {
+    const list = $("#list");
+    const visible = state.news.filter((n) => !n.hidden);
+    let html = "";
+    if (state.needSetup) {
+      html += `<div class="empty"><h2>新着の読み込み先を設定してください</h2><p>新着情報のJSONファイルを置いたGitHubリポジトリと、読み取り用のトークンを入力します。</p><button type="button" class="btn primary" data-nact="settings">設定する</button></div>`;
+      list.innerHTML = html; return;
+    }
+    if (state.newsError && newsRaw.length) html += `<div class="notice">${state.newsError === "auth" ? "新着を読み込めませんでした。トークンの期限やリポジトリの設定を確認してください。" : "通信できないため、前回読み込んだ新着を表示しています。"}</div>`;
+    if (!state.newsReady) {
+      html += `<div class="empty"><h2>読み込み中…</h2></div>`;
+    } else if (state.filter === "hidden") {
+      const q = state.q.toLowerCase();
+      const hid = state.news.filter((n) => n.hidden && (!q || [n.title, n.summary, n.area, n.source].join(" ").toLowerCase().includes(q))).sort(newsSort);
+      html += hid.length ? `<p class="section-label">非表示にしたもの ${hid.length}件</p>` + hid.map(newsHtml).join("")
+        : `<div class="empty"><h2>非表示にしたものはありません</h2></div>`;
+    } else if (state.newsError && !newsRaw.length) {
+      html += `<div class="empty"><h2>新着を読み込めませんでした</h2><p>${state.newsError === "auth" ? "リポジトリ名・ファイル名・トークンを確認してください。" : "通信を確認して、開き直してください。"}</p></div>`;
+    } else if (!visible.length) {
+      html += `<div class="empty"><h2>新着はまだありません</h2><p>読み込み先のファイルに新着が追加されると、ここに並びます。</p></div>`;
+    } else {
+      const shown = visible.filter(newsMatches).sort(newsSort);
+      const last = newsUpdatedAt || visible.map((n) => n.collectedAt || "").sort().pop();
+      if (last) html += `<p class="collected">最終更新 ${fmtYmd(last.slice(0, 10))}</p>`;
+      if (!shown.length) html += `<div class="empty"><h2>当てはまるものがありません</h2><p>しぼりこみを「すべて」に戻してみてください。</p></div>`;
+      const unread = shown.filter((n) => !n.read), read = shown.filter((n) => n.read);
+      if (unread.length) html += `<p class="section-label">未読 ${unread.length}件</p>` + unread.map(newsHtml).join("");
+      if (read.length) html += `<p class="section-label">既読</p>` + read.map(newsHtml).join("");
+    }
+    html += `<p class="settings-link"><button type="button" class="btn" data-nact="settings">新着の読み込み先を設定</button></p>`;
+    list.innerHTML = html;
+  }
+  function updateNews(id, data) {
+    const ns = readJson(NEWS_STATE_KEY, {});
+    ns[id] = { ...(ns[id] || {}), ...data };
+    writeJson(NEWS_STATE_KEY, ns); mergeNews(); render();
+  }
+
+  function render() {
+    const want = state.items.filter((i) => i.status !== "went");
+    const went = state.items.filter((i) => i.status === "went");
+    $("#n-want").textContent = want.length;
+    $("#n-went").textContent = went.length;
+    const unreadN = state.news.filter((n) => !n.read && !n.hidden).length;
+    $("#n-news").textContent = unreadN; $("#n-news").hidden = !unreadN;
+    $("#fab").hidden = state.view === "news";
+    document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === state.view)));
+    renderFilters();
+
+    if (state.view === "news") { renderNews(); return; }
+    const list = $("#list");
+    if (!state.ready) return;
+    const base = state.view === "want" ? want : went;
+    const shown = base.filter(matches).sort(state.view === "want" ? sortWant : sortWent);
+    let html = "";
+
+
+    if (!base.length) {
+      html += state.view === "want"
+        ? `<div class="empty"><h2>行きたい場所をためていこう</h2><p>気になるお店やイベントを見つけたら、右下の「＋ 追加」から登録します。</p></div>`
+        : `<div class="empty"><h2>行ったところはまだありません</h2><p>行きたいリストで「行った！」を押すと、ここに移ります。</p></div>`;
+    } else if (!shown.length) {
+      html += `<div class="empty"><h2>当てはまるものがありません</h2><p>しぼりこみを「すべて」に戻すか、検索語を変えてみてください。</p></div>`;
+    } else if (state.view === "want") {
+      const upcoming = shown.filter((i) => i.kind === "event" && i.eventDate && !isPast(i));
+      const rest = shown.filter((i) => !upcoming.includes(i) && !isPast(i));
+      const past = shown.filter(isPast);
+      if (upcoming.length) html += `<p class="section-label">日にちが決まっている予定</p>` + upcoming.map(cardHtml).join("");
+      if (rest.length) html += (upcoming.length ? `<p class="section-label">いつか行きたい</p>` : "") + rest.map(cardHtml).join("");
+      if (past.length) html += `<p class="section-label">終わったイベント</p>` + past.map(cardHtml).join("");
+    } else {
+      html += shown.map(cardHtml).join("");
+    }
+    html += `<div class="backup"><p>行きたい・行ったのメモはこのスマホのブラウザ内に保存されています。機種変更やブラウザのデータ削除に備えて、ときどき書き出しておくと安心です。</p>
+      <div class="row"><button type="button" id="export">書き出す</button><button type="button" id="import-btn">読み込む</button></div></div>`;
+    list.innerHTML = html;
+  }
+
+  // ---- backup ----
+  function exportData() {
+    const d = new Date();
+    const name = `odekake-${ymd(d)}.json`;
+    const body = JSON.stringify({ app: "odekake", version: 1, exportedAt: d.toISOString(), places: state.items, newsState: readJson(NEWS_STATE_KEY, {}) }, null, 2);
+    const file = new File([body], name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: name }).then(() => toast(`${state.items.length}件を書き出しました`)).catch(() => {});
+    } else {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast(`${state.items.length}件を書き出しました`);
+    }
+  }
+  async function importData(f) {
+    try {
+      const j = JSON.parse(await f.text());
+      if (j.app !== "odekake" || !Array.isArray(j.places)) throw new Error("format");
+      const a = readJson(ITEMS_KEY, []);
+      const have = new Set(a.map((x) => x.id));
+      let added = 0;
+      for (const p of j.places) { if (p && p.id && p.name && !have.has(p.id)) { a.push(p); have.add(p.id); added++; } }
+      writeJson(ITEMS_KEY, a); state.items = a;
+      if (j.newsState && typeof j.newsState === "object") {
+        const ns = readJson(NEWS_STATE_KEY, {});
+        for (const [k, v] of Object.entries(j.newsState)) ns[k] = { ...v, ...(ns[k] || {}) };
+        writeJson(NEWS_STATE_KEY, ns); mergeNews();
+      }
+      render(); toast(added ? `${added}件を読み込みました` : "新しいメモはありませんでした");
+    } catch (e) { toast("おでかけ帳で書き出したファイルを選んでください"); }
+  }
+  const importInput = document.createElement("input");
+  importInput.type = "file"; importInput.accept = "application/json,.json"; importInput.hidden = true;
+  document.body.appendChild(importInput);
+  importInput.addEventListener("change", () => { const f = importInput.files[0]; importInput.value = ""; if (f) importData(f); });
+
+  // ---- events ----
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-view]"); if (!b) return;
+    state.view = b.dataset.view; state.filter = "all";
+    if (state.view === "went" && state.filter === "soon") state.filter = "all";
+    try { localStorage.setItem("odekake.view", state.view); } catch (e) {}
+    render(); window.scrollTo({ top: 0 });
+  });
+  $("#filters").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    state.filter = state.filter === b.dataset.f ? "all" : b.dataset.f; render();
+  });
+  $("#q").addEventListener("input", (e) => { state.q = e.target.value.trim(); render(); });
+  $("#fab").addEventListener("click", () => openSheet(null));
+  $("#list").addEventListener("click", async (e) => {
+    const nb = e.target.closest("[data-nact]");
+    if (nb && nb.dataset.nact === "settings") { openSettings(); return; }
+    if (nb) {
+      const n = state.news.find((x) => x.id === nb.closest(".news").dataset.nid); if (!n) return;
+      const act = nb.dataset.nact;
+      if (act === "open" && !n.read) updateNews(n.id, { read: true });
+      if (act === "read") updateNews(n.id, { read: true });
+      if (act === "hide") { updateNews(n.id, { hidden: true, read: true }); toast("非表示にしました。「非表示にしたもの」から戻せます"); }
+      if (act === "unhide") { updateNews(n.id, { hidden: false }); toast("一覧に戻しました"); }
+      if (act === "save") {
+        const now = new Date().toISOString();
+        const isEvent = n.category === "event";
+        const ok = await persist(newId(), {
+          name: n.title, kind: isEvent ? "event" : "shop", status: "want",
+          tags: n.kidFriendly ? ["子連れOK"] : [], area: n.area || "", memo: n.summary || "", url: n.url || "",
+          eventDate: isEvent ? (n.eventDate || "") : "", eventEnd: isEvent ? (n.eventEnd || "") : "",
+          createdAt: now, updatedAt: now, visitedAt: "",
+        }, "行きたいリストに追加しました");
+        if (ok) updateNews(n.id, { saved: true, read: true });
+      }
+      return;
+    }
+    if (e.target.id === "export") { exportData(); return; }
+    if (e.target.id === "import-btn") { importInput.click(); return; }
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const it = state.items.find((i) => i.id === b.closest(".card").dataset.id); if (!it) return;
+    if (b.dataset.act === "edit") openSheet(it);
+    if (b.dataset.act === "went") {
+      const now = new Date().toISOString();
+      await persist(it.id, { ...it, status: "went", visitedAt: now, updatedAt: now }, "行ったに移しました");
+      state.view = "went"; render();
+    }
+  });
+
+  async function persist(id, data, msg) {
+    try { await store.save(id, data); if (msg) toast(msg); return true; }
+    catch (err) { toast("保存できませんでした。容量がいっぱいかもしれません"); return false; }
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const r = $("#toast-root"); r.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (r.innerHTML = ""), 2200);
+  }
+
+  // ---- news source settings ----
+  function openSettings() {
+    const src = getSource() || { repo: "", path: "news.json", token: "" };
+    const root = $("#sheet-root");
+    root.innerHTML = `<div class="sheet-bg" id="sheet-bg"><form class="sheet" id="settings" novalidate>
+      <h2>新着の読み込み先</h2>
+      <p class="hint">新着情報のJSONファイルを置いたGitHubリポジトリを指定します。privateリポジトリなら、そのリポジトリの Contents を読み取りだけ許可した fine-grained token を入れてください。入力した内容はこの端末の中にだけ保存されます。</p>
+      <div class="field"><label for="s-repo">リポジトリ（owner/name）</label><input type="text" id="s-repo" value="${esc(src.repo)}" placeholder="owner/repository" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label for="s-path">ファイル</label><input type="text" id="s-path" value="${esc(src.path || "news.json")}" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label for="s-token">読み取り用トークン</label><input type="password" id="s-token" value="${esc(src.token || "")}" placeholder="github_pat_..." autocomplete="off"></div>
+      <p class="hint" id="s-status" role="status"></p>
+      <div class="sheet-actions">
+        ${getSource() ? `<button type="button" class="btn danger" id="s-clear">設定を消す</button>` : ""}
+        <div class="right"><button type="button" class="btn" id="s-cancel">キャンセル</button><button type="submit" class="btn primary">保存</button></div>
+      </div>
+    </form></div>`;
+    document.body.style.overflow = "hidden";
+    const close = () => { root.innerHTML = ""; document.body.style.overflow = ""; };
+    $("#s-cancel").addEventListener("click", close);
+    $("#sheet-bg").addEventListener("click", (e) => { if (e.target.id === "sheet-bg") close(); });
+    const clear = $("#s-clear");
+    if (clear) clear.addEventListener("click", () => {
+      try { localStorage.removeItem(SOURCE_KEY); localStorage.removeItem(NEWS_CACHE_KEY); } catch (e) {}
+      applyNews(null); mergeNews(); close(); loadNews(); toast("設定を消しました");
+    });
+    $("#settings").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const repo = $("#s-repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/+$/, "");
+      const next = { repo, path: $("#s-path").value.trim() || "news.json", token: $("#s-token").value.trim() };
+      if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { $("#s-status").textContent = "リポジトリは owner/name の形で入れてください。"; return; }
+      $("#s-status").textContent = "読み込みを確かめています…";
+      try {
+        const j = await fetchNews(next);
+        writeJson(SOURCE_KEY, next); applyNews(j); writeJson(NEWS_CACHE_KEY, j);
+        state.newsError = ""; state.needSetup = false; mergeNews(); close(); render();
+        toast(`新着${newsRaw.length}件を読み込みました`);
+      } catch (err) {
+        $("#s-status").textContent = err.status === 401 ? "トークンが正しくないか、期限が切れています。"
+          : err.status === 403 || err.status === 404 ? "リポジトリかファイルが見つからないか、トークンに読み取り権限がありません。"
+          : "読み込めませんでした。通信を確認してください。";
+      }
+    });
+  }
+
+  // ---- add / edit sheet ----
+  function openSheet(it, afterVisit = false) {
+    const isNew = !it;
+    const d = it ? { tags: [], ...it } : { kind: "shop", status: "want", tags: ["子連れOK"], name: "", area: "", memo: "", url: "", eventDate: "", eventEnd: "" };
+    const allTags = [...new Set([...DEFAULT_TAGS, ...state.items.flatMap((i) => i.tags || []), ...d.tags])];
+    const root = $("#sheet-root");
+    root.innerHTML = `<div class="sheet-bg" id="sheet-bg"><form class="sheet" id="sheet" novalidate>
+      <h2>${afterVisit ? "どうだった？" : isNew ? "おでかけ先を追加" : "編集"}</h2>
+      <div class="field"><label for="f-name">名前</label><input type="text" id="f-name" value="${esc(d.name)}" placeholder="例: 駅前のパン屋、こども科学館のワークショップ" required></div>
+      <div class="field"><span class="lbl">種類</span><div class="seg" id="f-kind">${Object.entries(KINDS).map(([k, v]) => `<button type="button" data-v="${k}" aria-pressed="${d.kind === k}">${v}</button>`).join("")}</div></div>
+      <div class="row2" id="f-dates" ${d.kind === "event" ? "" : "hidden"}>
+        <div class="field"><label for="f-date">開催日</label><input type="date" id="f-date" value="${esc(d.eventDate || "")}"></div>
+        <div class="field"><label for="f-end">最終日（任意）</label><input type="date" id="f-end" value="${esc(d.eventEnd || "")}"></div>
+      </div>
+      <div class="field"><label for="f-area">場所・エリア</label><input type="text" id="f-area" value="${esc(d.area)}" placeholder="例: 〇〇駅北口、△△公園"></div>
+      <div class="field"><span class="lbl">タグ</span><div class="seg" id="f-tags">${allTags.map((t) => `<button type="button" data-v="${esc(t)}" aria-pressed="${d.tags.includes(t)}">${esc(t)}</button>`).join("")}</div>
+        <div class="addtag"><input type="text" id="f-newtag" placeholder="タグを追加"><button type="button" class="btn" id="f-addtag">追加</button></div></div>
+      <div class="field"><span class="lbl">状態</span><div class="seg" id="f-status"><button type="button" data-v="want" aria-pressed="${d.status !== "went"}">行きたい</button><button type="button" data-v="went" aria-pressed="${d.status === "went"}">行った</button></div></div>
+      <div class="field"><label for="f-memo">メモ</label><textarea id="f-memo" placeholder="${afterVisit ? "子どもの反応、混み具合、次に頼みたいもの など" : "営業時間、気になったポイント など"}">${esc(d.memo)}</textarea></div>
+      <div class="field"><label for="f-url">リンク（任意）</label><input type="url" id="f-url" value="${esc(d.url)}" placeholder="https://"></div>
+      <div id="f-confirm"></div>
+      <div class="sheet-actions">
+        ${isNew ? "" : `<button type="button" class="btn danger" id="f-del">削除</button>`}
+        <div class="right"><button type="button" class="btn" id="f-cancel">${afterVisit ? "あとで" : "キャンセル"}</button><button type="submit" class="btn primary">保存</button></div>
+      </div>
+    </form></div>`;
+    document.body.style.overflow = "hidden";
+    const close = () => { root.innerHTML = ""; document.body.style.overflow = ""; };
+    const form = $("#sheet");
+    if (isNew) setTimeout(() => $("#f-name").focus(), 50);
+
+    const single = (sel, cb) => $(sel).addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-v]"); if (!b) return;
+      const was = b.getAttribute("aria-pressed") === "true";
+      $(sel).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true"); cb && cb(b.dataset.v, was, b);
+    });
+    single("#f-kind", (v) => { $("#f-dates").hidden = v !== "event"; });
+    single("#f-status");
+    $("#f-tags").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-v]"); if (!b) return;
+      b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+    });
+    const addTag = () => {
+      const v = $("#f-newtag").value.trim(); if (!v) return;
+      let b = [...$("#f-tags").children].find((x) => x.dataset.v === v);
+      if (!b) { b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = v; $("#f-tags").appendChild(b); }
+      b.setAttribute("aria-pressed", "true"); $("#f-newtag").value = "";
+    };
+    $("#f-addtag").addEventListener("click", addTag);
+    $("#f-newtag").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } });
+    $("#f-cancel").addEventListener("click", close);
+    $("#sheet-bg").addEventListener("click", (e) => { if (e.target.id === "sheet-bg") close(); });
+    const del = $("#f-del");
+    if (del) del.addEventListener("click", () => {
+      $("#f-confirm").innerHTML = `<div class="confirm"><span>「${esc(d.name)}」を削除しますか？</span><button type="button" class="btn danger" id="f-del-yes">削除する</button><button type="button" class="btn" id="f-del-no">やめる</button></div>`;
+      $("#f-del-no").onclick = () => ($("#f-confirm").innerHTML = "");
+      $("#f-del-yes").onclick = async () => {
+        try { await store.remove(d.id); toast("削除しました"); close(); } catch (e) { toast("削除できませんでした"); }
+      };
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = $("#f-name").value.trim();
+      if (!name) { $("#f-name").focus(); $("#f-name").placeholder = "名前を入れてください"; return; }
+      const pressed = (sel) => [...$(sel).querySelectorAll('button[aria-pressed="true"]')].map((b) => b.dataset.v);
+      const kind = pressed("#f-kind")[0] || "shop";
+      const status = pressed("#f-status")[0] || "want";
+      const now = new Date().toISOString();
+      let eventDate = kind === "event" ? $("#f-date").value : "";
+      let eventEnd2 = kind === "event" ? $("#f-end").value : "";
+      if (eventEnd2 && eventDate && eventEnd2 < eventDate) eventEnd2 = "";
+      const data = {
+        name, kind, status,
+        tags: pressed("#f-tags"),
+        area: $("#f-area").value.trim(),
+        memo: $("#f-memo").value.trim(),
+        url: $("#f-url").value.trim(),
+        eventDate, eventEnd: eventEnd2,
+        createdAt: d.createdAt || now,
+        updatedAt: now,
+        visitedAt: status === "went" ? (d.visitedAt || now) : "",
+      };
+      if (d.example) data.example = true;
+      const id = d.id || newId();
+      const ok = await persist(id, data, isNew ? "追加しました" : "保存しました");
+      if (ok) {
+        close();
+        if (isNew || d.status !== status) { state.view = status; render(); }
+      }
+    });
+  }
+
+  render();
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

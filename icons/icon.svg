@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0a8fd0"/>
+  <!-- map pin -->
+  <path d="M256 104 C190 104 140 154 140 218 C140 300 256 412 256 412 C256 412 372 300 372 218 C372 154 322 104 256 104 Z" fill="#ffffff"/>
+  <circle cx="256" cy="216" r="46" fill="#0a8fd0"/>
+</svg>
