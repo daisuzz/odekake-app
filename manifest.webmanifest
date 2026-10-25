@@ -2,7 +2,7 @@
   "name": "おでかけ帳",
   "short_name": "おでかけ帳",
   "description": "イベントやお店の新着情報と、行きたい場所のメモ",
-  "id": "./",
+  "id": "/odekake-app/",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
