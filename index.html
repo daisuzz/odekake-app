@@ -190,7 +190,6 @@ main .wrap { padding-block: 0 110px; }
     { id: "c:open", label: "開店" },
     { id: "c:close", label: "閉店" },
     { id: "c:community", label: "地域のお知らせ" },
-    { id: "hidden", label: "非表示にしたもの" },
   ];
   const state = { news: [], newsReady: false, items: [], view: "want", filter: "all", q: "", ready: false };
 
@@ -212,7 +211,7 @@ main .wrap { padding-block: 0 110px; }
 
   // ---- store: this browser's localStorage ----
   // places: odekake.items (array). News is a JSON file in a (usually private) GitHub repo set in odekake.source;
-  // the last copy is kept in odekake.newsCache for offline use. Per-device read/hidden/saved lives in odekake.newsState.
+  // the last copy is kept in odekake.newsCache for offline use. Per-device read/saved lives in odekake.newsState.
   const ITEMS_KEY = "odekake.items", NEWS_STATE_KEY = "odekake.newsState", SOURCE_KEY = "odekake.source", NEWS_CACHE_KEY = "odekake.newsCache";
   const readJson = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v ?? fallback; } catch (e) { return fallback; } };
   const writeJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
@@ -225,7 +224,7 @@ main .wrap { padding-block: 0 110px; }
   let newsRaw = [], newsUpdatedAt = "";
   function mergeNews() {
     const ns = readJson(NEWS_STATE_KEY, {});
-    state.news = newsRaw.map((n) => ({ read: false, hidden: false, saved: false, ...n, ...(ns[n.id] || {}) }));
+    state.news = newsRaw.map((n) => ({ read: false, saved: false, ...n, ...(ns[n.id] || {}) }));
   }
   const getSource = () => { const v = readJson(SOURCE_KEY, null); return v && v.repo ? v : null; };
   function applyNews(j) { newsRaw = Array.isArray(j && j.items) ? j.items : []; newsUpdatedAt = (j && j.updatedAt) || ""; }
@@ -311,12 +310,15 @@ main .wrap { padding-block: 0 110px; }
       ${it.memo ? `<p class="memo">${esc(it.memo)}</p>` : ""}
       <div class="actions">
         ${went ? "" : `<button type="button" class="btn primary" data-act="went">行った！</button>`}
+        ${!went && newsFor(it) ? `<button type="button" class="btn" data-act="unsave">新着に戻す</button>` : ""}
         <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${mapQ}" target="_blank" rel="noopener">地図</a>
         ${it.url ? `<a class="btn" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener">リンク</a>` : ""}
         <button type="button" class="btn" data-act="edit">編集</button>
       </div>
     </article>`;
   }
+  // the news entry a place was saved from; older saves have no newsId, so fall back to url/title
+  const newsFor = (it) => state.news.find((n) => n.saved && (it.newsId ? n.id === it.newsId : (it.url && n.url === it.url) || n.title === it.name));
   const safeUrl = (u) => /^https?:\/\//i.test(u) ? u : "https://" + u;
 
   const fmtYmd = (s) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? fmtDate(s.slice(0, 10)) : "");
@@ -344,15 +346,15 @@ main .wrap { padding-block: 0 110px; }
       ${n.summary ? `<p>${esc(n.summary)}</p>` : ""}
       <div class="actions">
         ${n.url ? `<a class="btn" href="${esc(safeUrl(n.url))}" target="_blank" rel="noopener" data-nact="open">くわしく</a>` : ""}
-        ${canSave ? (n.saved ? `<span class="btn" aria-disabled="true">リストに追加済み</span>` : `<button type="button" class="btn primary" data-nact="save">行きたいに追加</button>`) : ""}
-        ${n.read ? "" : `<button type="button" class="btn" data-nact="read">既読</button>`}
-        ${n.hidden ? `<button type="button" class="btn primary" data-nact="unhide">戻す</button>` : `<button type="button" class="btn" data-nact="hide">非表示</button>`}
+        ${canSave ? `<button type="button" class="btn primary" data-nact="save">行きたいに追加</button>` : ""}
+        <button type="button" class="btn" data-nact="${n.read ? "unread" : "read"}">${n.read ? "未読にする" : "既読にする"}</button>
       </div>
     </article>`;
   }
   function renderNews() {
     const list = $("#list");
-    const visible = state.news.filter((n) => !n.hidden);
+    // saved entries live in the want list until 新着に戻す brings them back
+    const visible = state.news.filter((n) => !n.saved);
     let html = "";
     if (state.needSetup) {
       html += `<div class="empty"><h2>新着の読み込み先を設定してください</h2><p>新着情報のJSONファイルを置いたGitHubリポジトリと、読み取り用のトークンを入力します。</p><button type="button" class="btn primary" data-nact="settings">設定する</button></div>`;
@@ -361,11 +363,6 @@ main .wrap { padding-block: 0 110px; }
     if (state.newsError && newsRaw.length) html += `<div class="notice">${state.newsError === "auth" ? "新着を読み込めませんでした。トークンの期限やリポジトリの設定を確認してください。" : "通信できないため、前回読み込んだ新着を表示しています。"}</div>`;
     if (!state.newsReady) {
       html += `<div class="empty"><h2>読み込み中…</h2></div>`;
-    } else if (state.filter === "hidden") {
-      const q = state.q.toLowerCase();
-      const hid = state.news.filter((n) => n.hidden && (!q || [n.title, n.summary, n.area, n.source].join(" ").toLowerCase().includes(q))).sort(newsSort);
-      html += hid.length ? `<p class="section-label">非表示にしたもの ${hid.length}件</p>` + hid.map(newsHtml).join("")
-        : `<div class="empty"><h2>非表示にしたものはありません</h2></div>`;
     } else if (state.newsError && !newsRaw.length) {
       html += `<div class="empty"><h2>新着を読み込めませんでした</h2><p>${state.newsError === "auth" ? "リポジトリ名・ファイル名・トークンを確認してください。" : "通信を確認して、開き直してください。"}</p></div>`;
     } else if (!visible.length) {
@@ -393,7 +390,7 @@ main .wrap { padding-block: 0 110px; }
     const went = state.items.filter((i) => i.status === "went");
     $("#n-want").textContent = want.length;
     $("#n-went").textContent = went.length;
-    const unreadN = state.news.filter((n) => !n.read && !n.hidden).length;
+    const unreadN = state.news.filter((n) => !n.read && !n.saved).length;
     $("#n-news").textContent = unreadN; $("#n-news").hidden = !unreadN;
     $("#fab").hidden = state.view === "news";
     document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === state.view)));
@@ -486,8 +483,7 @@ main .wrap { padding-block: 0 110px; }
       const act = nb.dataset.nact;
       if (act === "open" && !n.read) updateNews(n.id, { read: true });
       if (act === "read") updateNews(n.id, { read: true });
-      if (act === "hide") { updateNews(n.id, { hidden: true, read: true }); toast("非表示にしました。「非表示にしたもの」から戻せます"); }
-      if (act === "unhide") { updateNews(n.id, { hidden: false }); toast("一覧に戻しました"); }
+      if (act === "unread") updateNews(n.id, { read: false });
       if (act === "save") {
         const now = new Date().toISOString();
         const isEvent = n.category === "event";
@@ -495,7 +491,7 @@ main .wrap { padding-block: 0 110px; }
           name: n.title, kind: isEvent ? "event" : "shop", status: "want",
           tags: n.kidFriendly ? ["子連れOK"] : [], area: n.area || "", memo: n.summary || "", url: n.url || "",
           eventDate: isEvent ? (n.eventDate || "") : "", eventEnd: isEvent ? (n.eventEnd || "") : "",
-          createdAt: now, updatedAt: now, visitedAt: "",
+          createdAt: now, updatedAt: now, visitedAt: "", newsId: n.id,
         }, "行きたいリストに追加しました");
         if (ok) updateNews(n.id, { saved: true, read: true });
       }
@@ -506,6 +502,13 @@ main .wrap { padding-block: 0 110px; }
     const b = e.target.closest("[data-act]"); if (!b) return;
     const it = state.items.find((i) => i.id === b.closest(".card").dataset.id); if (!it) return;
     if (b.dataset.act === "edit") openSheet(it);
+    if (b.dataset.act === "unsave") {
+      const n = newsFor(it); if (!n) return;
+      if (!confirm(`「${it.name}」を行きたいリストから外して、新着に戻しますか？`)) return;
+      await store.remove(it.id);
+      updateNews(n.id, { saved: false, read: false });
+      toast("新着に戻しました");
+    }
     if (b.dataset.act === "went") {
       const now = new Date().toISOString();
       await persist(it.id, { ...it, status: "went", visitedAt: now, updatedAt: now }, "行ったに移しました");
@@ -653,6 +656,7 @@ main .wrap { padding-block: 0 110px; }
         visitedAt: status === "went" ? (d.visitedAt || now) : "",
       };
       if (d.example) data.example = true;
+      if (d.newsId) data.newsId = d.newsId;
       const id = d.id || newId();
       const ok = await persist(id, data, isNew ? "追加しました" : "保存しました");
       if (ok) {
