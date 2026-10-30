@@ -1,5 +1,5 @@
 // アプリ本体はネット優先（更新をすぐ反映）、つながらないときはキャッシュで動かす
-const CACHE = "odekake-app-v3";
+const CACHE = "odekake-app-v4";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
